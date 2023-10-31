@@ -1,0 +1,61 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "TEST app",
+      "type": "python",
+      "request": "launch",
+      "module": "uvicorn",
+      "args": [
+        "src.main:app",
+        "--host",
+        "0.0.0.0",
+        "--port",
+        "8000",
+        "--ws",
+        "websockets",
+        "--reload"
+      ],
+      "jinja": true,
+      "justMyCode": true,
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}:${PYTHONPATH}",
+        "LOG_LEVEL": "DEBUG"
+      }
+    },
+    {
+      "name": "UI app",
+      "type": "python",
+      "request": "launch",
+      "module": "uvicorn",
+      "args": [
+        "migration_tool.src.main:app",
+        "--host",
+        "0.0.0.0",
+        "--port",
+        "8000",
+        "--ws",
+        "websockets",
+        "--reload"
+      ],
+      "jinja": true,
+      "justMyCode": true,
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}:${PYTHONPATH}",
+        "LOG_LEVEL": "DEBUG"
+      }
+    },
+    {
+      "name": "Headless app",
+      "type": "python",
+      "request": "launch",
+      "program": "import_app/src/main.py",
+      "console": "integratedTerminal",
+      "justMyCode": true,
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}:${PYTHONPATH}",
+        "LOG_LEVEL": "DEBUG"
+      }
+    }
+  ]
+}
