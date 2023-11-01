@@ -3,3 +3,4 @@ labelbox.env
 supervisely
 __pycache__
 .DS_Store
+temp

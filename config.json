@@ -1,0 +1,17 @@
+{
+  "type": "app",
+  "version": "2.0.0",
+  "name": "Labelbox to Supervisely project Migration Tool",
+  "description": "Convert and copy multiple Labelbox projects into Supervisely at once.",
+  "docker_image": "supervisely/base-py-sdk:6.72.168",
+  "categories": ["images", "import", "videos"],
+  "icon": "",
+  "icon_cover": true,
+  "headless": false,
+  "poster": "",
+  "entrypoint": "python -m uvicorn src.main:app --host 0.0.0.0 --port 8000",
+  "port": 8000,
+  "context_menu": {
+    "target": ["ecosystem", "files_file"]
+  }
+}
