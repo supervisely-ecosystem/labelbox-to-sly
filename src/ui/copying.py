@@ -136,7 +136,6 @@ def start_copying() -> None:
                 else:
                     upload_status = False
             elif project.media_type == lb.MediaType.Image:
-                sly.logger.debug(f"Project '{project.name}' has image labels.")
                 project_src_dir = download_coco_format_project(project)
                 if not project_src_dir:
                     sly.logger.warning(f"Project {project.name} was not downloaded.")
