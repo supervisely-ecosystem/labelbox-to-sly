@@ -111,6 +111,9 @@ class State:
 
     def load_from_env(self):
         """Downloads the .env file from Supervisely and reads the Labelbox credentials from it."""
+        if not LABELBOX_ENV_TEAMFILES:
+            sly.logger.warning("No .env file provided. It should be provided in the next step.")
+            return
         try:
             api.file.download(STATE.selected_team, LABELBOX_ENV_TEAMFILES, LABELBOX_ENV_FILE)
         except Exception as e:
