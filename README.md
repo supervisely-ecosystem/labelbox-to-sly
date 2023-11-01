@@ -1,5 +1,5 @@
 <div align="center" markdown>
-<img src=""/>
+<img src="https://github.com/supervisely-ecosystem/labelbox-to-sly/assets/79905215/1bc22278-7344-4a9a-ae79-20f15189e45c"/>
 
 # Convert and copy multiple Labelbox projects into Supervisely at once
 
@@ -55,6 +55,9 @@ If everything was done correctly, you will see the following message in the app 
 2. Enter the API key.
 3. Press the `Connect to Labelbox` button.
 
+![credentials](https://github.com/supervisely-ecosystem/labelbox-to-sly/assets/79905215/a14ec953-37a1-42b7-9dde-cc73fe5a84d9)<br>
+
+![credentials](https://github.com/supervisely-ecosystem/labelbox-to-sly/assets/79905215/82df4cc9-0b15-4081-9d65-6f508eadffa2)
 
 If everything was done correctly, you will see the following message in the app UI:
 
@@ -70,13 +73,20 @@ So, here is the step-by-step guide on how to use the app:
 **Step 1:** Select projects to copy<br>
 After connecting to the Labelbox instance, list of the projects will be loaded into the widget automatically. You can select which projects you want to copy to Supervisely and then press the `Select projects` button.<br>
 
+![select_projects](https://github.com/supervisely-ecosystem/labelbox-to-sly/assets/79905215/304bd682-829e-4f03-9692-f3487bef2059)
 
 **Step 2:** Take a look on list of projects<br>
 After completing the `Step 1️⃣`, the application will retrieve information about the projects from labelbox API and show it in the table. Here you can find the links to the projects in Labelbox, and after copying the projects to Supervisely, links to the projects in Supervisely will be added to the table too.<br>
 
+![projects_table](https://github.com/supervisely-ecosystem/labelbox-to-sly/assets/79905215/72cbbf1f-3881-41e5-95d6-96c193bfe2b6)<br>
+
+
 **Step 3:** Press the `Copy` button<br>
 Now you only need to press the `Copy` button and wait until the copying process is finished. You will see the statuses of the copying process for each project in the table. If any errors occur during the copying process, you will see the error status in the table. When the process is finished, you will see the total number of successfully copied projects and the total number of projects that failed to copy.<br>
 
+![copy_projects](https://github.com/supervisely-ecosystem/labelbox-to-sly/assets/79905215/5b18d76d-cd62-4d92-b19a-c32f080b4e2c)<br>
+
+![finished](https://github.com/supervisely-ecosystem/labelbox-to-sly/assets/79905215/374832b4-7394-4181-bc9d-7d3fbdad2377)<br>
 
 The application will be stopped automatically after the copying process is finished.<br>
 
