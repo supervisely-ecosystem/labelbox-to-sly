@@ -379,7 +379,7 @@ def process_video_project(project: lb.Project):
         if len(project_export) == 0:
             sly.logger.error(f"Project {project.name} has no labels.")
             return False
-        sly.logger.debug(f"Project '{project.name}' has image labels.")
+        sly.logger.debug(f"Project '{project.name}' has labels.")
         data = LBV1VideoIterator(project_export, g.STATE.client)
         for video_data in data:
             video_url = video_data["Labeled Data"]
@@ -412,8 +412,8 @@ def process_video_project(project: lb.Project):
                 video_frames.append(sly_frame)
             video_objects = sly.VideoObjectCollection(list(video_objects_map.values()))
             video_frames = sly.FrameCollection(video_frames)
-            img_size = sly_video.frame_height, sly_video.frame_width
-            video_ann = sly.VideoAnnotation(img_size, len(labels_info), video_objects, video_frames)
+            img_size = (sly_video.frame_height, sly_video.frame_width)
+            video_ann = sly.VideoAnnotation(img_size, sly_video.frames_count, video_objects, video_frames)
             g.api.video.annotation.append(sly_video.id, video_ann)
         sly.logger.info(f"Project {project.name} was successfully uploaded to Supervisely.")
         return sly_project
@@ -443,7 +443,7 @@ def create_sly_meta_from_lb(project: lb.Project, sly_project: sly.Project):
         obj_class = sly.ObjClass(tool.name, g.GEOMETRIES_MAPPING[tool.tool.name])
         obj_classes.append(obj_class)
 
-        sly.logger.debug(f"   - Added object class '{tool.name}' ({obj_class.geometry_type.name}).")
+        sly.logger.debug(f"   - Added object class '{tool.name}' ({obj_class.geometry_type.geometry_name()}).")
 
     project_meta = sly.ProjectMeta(obj_classes=obj_classes)
     g.api.project.update_meta(sly_project.id, project_meta)
