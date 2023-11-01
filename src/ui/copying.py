@@ -29,8 +29,10 @@ stop_button.hide()
 buttons_flexbox = Flexbox([copy_button, stop_button])
 
 copying_progress = Progress()
+processing_notification = Text(text="Processing. It may take a while...", status="info")
 good_results = Text(status="success")
 bad_results = Text(status="error")
+processing_notification.hide()
 good_results.hide()
 bad_results.hide()
 
@@ -38,7 +40,14 @@ card = Card(
     title="3️⃣ Copying",
     description="Copy selected projects from Labelbox to Supervisely.",
     content=Container(
-        [projects_table, buttons_flexbox, copying_progress, good_results, bad_results]
+        [
+            projects_table,
+            buttons_flexbox,
+            copying_progress,
+            processing_notification,
+            good_results,
+            bad_results,
+        ]
     ),
     collapsable=True,
 )
@@ -108,6 +117,7 @@ def start_copying() -> None:
     sly.logger.debug(f"Copying button is clicked. Selected projects: {g.STATE.selected_projects}")
 
     stop_button.show()
+    processing_notification.show()
     copy_button.text = "Copying..."
     g.STATE.continue_copying = True
 
@@ -173,6 +183,7 @@ def start_copying() -> None:
 
     copy_button.text = "Copy"
     stop_button.hide()
+    processing_notification.hide()
 
     sly.logger.info(f"Finished copying {len(g.STATE.selected_projects)} projects.")
 
