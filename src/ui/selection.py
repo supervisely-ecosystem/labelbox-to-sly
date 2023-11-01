@@ -75,9 +75,7 @@ def select_projects() -> None:
     for project_id in project_ids:
         selected_project = g.STATE.projects[project_id]
         selected_projects.append(selected_project)
-        sly.logger.debug(
-            f"Adding project {selected_project.name} to the selected projects."
-        )
+        sly.logger.debug(f"Adding project {selected_project.name} to the selected projects.")
 
     sly.logger.debug(f"Saved {len(selected_projects)} projects to the global state.")
 
@@ -105,6 +103,7 @@ def change_selection() -> None:
 
     g.STATE.project_names = dict()
     g.STATE.selected_projects = None
+    g.STATE.proccessed_projects = []
 
     card.unlock()
     card.uncollapse()

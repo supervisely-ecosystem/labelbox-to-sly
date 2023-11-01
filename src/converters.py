@@ -4,10 +4,15 @@ from copy import deepcopy
 from typing import Dict, List, Tuple
 
 import cv2
+import labelbox as lb
 import numpy as np
 import pycocotools.mask as mask_util
 import supervisely as sly
+from labelbox.data.serialization.labelbox_v1.converter import LBV1VideoIterator
 from pycocotools.coco import COCO
+
+import src.globals as g
+from src.labelbox_api import download_mask
 
 
 def coco_to_supervisely(src_path: str, dst_path: str, ignore_bbox: bool = False) -> str:
@@ -47,7 +52,7 @@ def coco_to_supervisely(src_path: str, dst_path: str, ignore_bbox: bool = False)
         sly.fs.mkdir(img_dir)
         sly.fs.mkdir(ann_dir)
 
-        project_meta = update_meta(project_meta, dst_path, categories, dataset_name)
+        project_meta = update_sly_meta(project_meta, dst_path, categories)
 
         for img_id, img_info in coco_images.items():
             image_name = img_info["file_name"]
@@ -75,8 +80,8 @@ def coco_to_supervisely(src_path: str, dst_path: str, ignore_bbox: bool = False)
     return dst_path
 
 
-def update_meta(
-    meta: sly.ProjectMeta, dst_path: str, coco_categories: List[dict], ann_types=None
+def update_sly_meta(
+    meta: sly.ProjectMeta, dst_path: str, coco_categories: List[dict]
 ) -> sly.ProjectMeta:
     """Create Supervisely ProjectMeta from COCO categories.
 
@@ -306,3 +311,139 @@ def coco_category_to_class_name(coco_categories: List[dict]) -> Dict:
     :rtype: Dict
     """
     return {category["id"]: category["name"] for category in coco_categories}
+
+
+def convert_object_to_sly_geometry(lb_obj: dict, obj_cls: sly.ObjClass = None):
+    """Convert Labelbox object to Supervisely geometry.
+
+    :param lb_obj: Labelbox object.
+    :type lb_obj: dict
+    :param obj_cls: Supervisely object class.
+    :type obj_cls: sly.ObjClass
+    :return: Supervisely geometry.
+    :rtype: sly.Geometry
+    """
+
+    if obj_cls is None:
+        return None
+    elif obj_cls.geometry_type == sly.Rectangle and lb_obj.get("bbox"):
+        bbox = lb_obj["bbox"]
+        top, left = int(bbox["top"]), int(bbox["left"])
+        bottom, right = (int(top) + bbox["height"], int(left) + bbox["width"])
+        geometry = sly.Rectangle(top, left, bottom, right)
+    elif obj_cls.geometry_type == sly.Bitmap and lb_obj.get("instanceURI"):
+        mask_url = lb_obj["instanceURI"]
+        local_path = os.path.join(g.TEMP_DIR, "mask.png")
+        mask_np = download_mask(mask_url, local_path, g.STATE.client)
+        geometry = sly.Bitmap(mask_np)
+    elif obj_cls.geometry_type == sly.Polygon and lb_obj.get("polygon"):
+        exterior = [(point["y"], point["x"]) for point in lb_obj["polygon"]]
+        geometry = sly.Polygon(exterior=exterior)
+    elif obj_cls.geometry_type == sly.Polyline and lb_obj.get("line"):
+        exterior = [(point["y"], point["x"]) for point in lb_obj["line"]]
+        geometry = sly.Polyline(exterior=exterior)
+    elif obj_cls.geometry_type == sly.Point and lb_obj.get("point"):
+        geometry = sly.Point(lb_obj["point"]["y"], lb_obj["point"]["x"])
+    else:
+        return None
+    return geometry
+
+
+def process_video_project(project: lb.Project):
+    """Process video project. Get video links and annotations from Labelbox.
+    Convert annotations to Supervisely format and upload to Supervisely project.
+
+    :param project: Labelbox project.
+    :type project: lb.Project
+    :return: Supervisely project if success, False otherwise.
+    :rtype: Union[sly.Project, bool]
+    """
+
+    try:
+        sly_project = g.api.project.create(
+            g.STATE.selected_workspace,
+            project.name,
+            type=sly.ProjectType.VIDEOS,
+            change_name_if_conflict=True,
+        )
+        sly.logger.debug(f"Created project '{project.name}' in Supervisely.")
+
+        sly_ds = g.api.dataset.create(sly_project.id, "ds0")
+        sly.logger.debug(f"Created dataset 'ds0' in project '{project.name}'.")
+
+        sly_meta = create_sly_meta_from_lb(project, sly_project)
+
+        project = g.STATE.client.get_project(project.uid)
+        project_export = project.export_labels(download=True)
+        if len(project_export) == 0:
+            sly.logger.error(f"Project {project.name} has no labels.")
+            return False
+        sly.logger.debug(f"Project '{project.name}' has image labels.")
+        data = LBV1VideoIterator(project_export, g.STATE.client)
+        for video_data in data:
+            video_url = video_data["Labeled Data"]
+            video_name = video_data["External ID"]
+            sly_video = g.api.video.upload_link(
+                sly_ds.id, video_url, video_name, skip_download=True
+            )
+            video_objects_map = {}
+            video_frames = []
+            labels_info = video_data["Label"]
+            for idx, frame_info in enumerate(labels_info):
+                figures = []
+                for lb_obj in frame_info["objects"]:
+                    cls_name = lb_obj["title"]
+                    vobj_id = lb_obj["featureId"]
+
+                    lbl_obj_cls = sly_meta.get_obj_class(cls_name)
+                    geometry = convert_object_to_sly_geometry(lb_obj, lbl_obj_cls)
+                    if geometry is None:
+                        continue
+                    vobj = video_objects_map.get(vobj_id)
+                    if vobj is None:
+                        vobj = sly.VideoObject(lbl_obj_cls, class_id=lbl_obj_cls.sly_id)
+                        video_objects_map[vobj_id] = vobj
+
+                    figure = sly.VideoFigure(vobj, geometry, idx, class_id=vobj_id)
+
+                    figures.append(figure)
+                sly_frame = sly.Frame(idx, figures=figures)
+                video_frames.append(sly_frame)
+            video_objects = sly.VideoObjectCollection(list(video_objects_map.values()))
+            video_frames = sly.FrameCollection(video_frames)
+            img_size = sly_video.frame_height, sly_video.frame_width
+            video_ann = sly.VideoAnnotation(img_size, len(labels_info), video_objects, video_frames)
+            g.api.video.annotation.append(sly_video.id, video_ann)
+        sly.logger.info(f"Project {project.name} was successfully uploaded to Supervisely.")
+        return sly_project
+    except Exception as e:
+        sly.logger.error(f"Can't process the project {project.name}.")
+        sly.logger.error(e)
+        g.api.project.remove(sly_project.id)
+        return False
+
+
+def create_sly_meta_from_lb(project: lb.Project, sly_project: sly.Project):
+    """Create and update Supervisely ProjectMeta from Labelbox project.
+
+    :param project: Labelbox project.
+    :type project: lb.Project
+    :param sly_project: Supervisely project.
+    :type sly_project: sly.Project
+    :return: Supervisely ProjectMeta.
+    :rtype: sly.ProjectMeta
+    """
+
+    ontology = project.ontology()
+    tools = ontology.tools()
+    obj_classes = []
+    sly.logger.debug(f"Updating meta for project '{project.name}'.")
+    for tool in tools:
+        obj_class = sly.ObjClass(tool.name, g.GEOMETRIES_MAPPING[tool.tool.name])
+        obj_classes.append(obj_class)
+
+        sly.logger.debug(f"   - Added object class '{tool.name}' ({obj_class.geometry_type.name}).")
+
+    project_meta = sly.ProjectMeta(obj_classes=obj_classes)
+    g.api.project.update_meta(sly_project.id, project_meta)
+    return project_meta
