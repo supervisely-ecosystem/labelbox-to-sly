@@ -412,6 +412,7 @@ def process_video_project(project: lb.Project):
                 video_frames.append(sly_frame)
             video_objects = sly.VideoObjectCollection(list(video_objects_map.values()))
             video_frames = sly.FrameCollection(video_frames)
+            sly_video = g.api.video.get_info_by_id(sly_video.id)
             img_size = (sly_video.frame_height, sly_video.frame_width)
             video_ann = sly.VideoAnnotation(img_size, sly_video.frames_count, video_objects, video_frames)
             g.api.video.annotation.append(sly_video.id, video_ann)
