@@ -1,3 +1,3 @@
 supervisely==6.72.163
 pycocotools==2.0.7
-labelbox[data]
+labelbox
