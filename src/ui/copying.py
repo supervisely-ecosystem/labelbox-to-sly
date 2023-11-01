@@ -151,6 +151,7 @@ def start_copying() -> None:
                     sly.logger.warning(f"Project {project.name} was not downloaded.")
                     update_cells(project.uid, new_status=g.COPYING_STATUS.error)
                     uploaded_with_errors += 1
+                    copy_pbar.update(1)
                     continue
                 project_dst_dir = os.path.join(g.SLY_DIR, project.name)
                 sly.fs.mkdir(project_dst_dir, remove_content_if_exists=True)
