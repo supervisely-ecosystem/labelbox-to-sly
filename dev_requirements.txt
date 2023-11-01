@@ -1,3 +1,4 @@
 supervisely==6.72.163
 pycocotools==2.0.7
+typing-extensions==4.5.0
 labelbox[data]
