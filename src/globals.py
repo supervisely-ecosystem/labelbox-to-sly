@@ -38,18 +38,12 @@ TEMP_DIR = os.path.join(PARENT_DIR, "temp")
 # * Directory, where downloaded and convertted to coco Labelbox data will be stored.
 COCO_DIR = os.path.join(TEMP_DIR, "coco")
 
-# * Directory, where downloaded as archives Labelbox data will be stored.
-# LB_JSON_FILES_DIR = os.path.join(TEMP_DIR, "src projects")
-
 # # * Directory, where converted Supervisely data will be stored.
 SLY_DIR = os.path.join(TEMP_DIR, "sly")
 
 sly.fs.mkdir(COCO_DIR, remove_content_if_exists=True)
-# sly.fs.mkdir(LB_JSON_FILES_DIR, remove_content_if_exists=True)
 sly.fs.mkdir(SLY_DIR, remove_content_if_exists=True)
 sly.logger.debug(
-    # f"Archive dir: {ARCHIVE_DIR}, unpacked dir: {UNPACKED_DIR}, converted dir: {CONVERTED_DIR}"
-    # f"TEMP_DIR: {TEMP_DIR}, LB_JSON_FILES_DIR: {LB_JSON_FILES_DIR}, COCO_DIR: {COCO_DIR}, SLY_DIR: {SLY_DIR}"
     f"TEMP_DIR: {TEMP_DIR}, COCO_DIR: {COCO_DIR}, SLY_DIR: {SLY_DIR}"
 )
 

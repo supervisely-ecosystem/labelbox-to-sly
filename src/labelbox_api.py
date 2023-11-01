@@ -43,7 +43,7 @@ def download_coco_format_project(project: lb.Project) -> bool:
         sly.logger.debug(f"Project '{project.name}' has image labels.")
         labels = LBV1Converter.deserialize(project_export)
         coco_labels = COCOConverter.serialize_instances(
-            labels, image_root=src_img_dir, ignore_existing_data=True, max_workers=0
+            labels, image_root=src_img_dir, ignore_existing_data=True
         )
         image_path = coco_labels.get("info").get("image_root")
         coco_labels["info"]["image_root"] = image_path.as_posix()

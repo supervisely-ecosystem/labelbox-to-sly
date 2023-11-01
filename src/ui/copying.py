@@ -184,11 +184,11 @@ def start_copying() -> None:
         )
         return
 
-    sly.fs.clean_dir(g.ARCHIVE_DIR)
-    sly.fs.clean_dir(g.UNPACKED_DIR)
+    sly.fs.clean_dir(g.COCO_DIR)
+    sly.fs.clean_dir(g.SLY_DIR)
 
     sly.logger.info(
-        f"Removed content from {g.ARCHIVE_DIR} and {g.UNPACKED_DIR}." "Will stop the application."
+        f"Removed content from '{g.SLY_DIR}' and '{g.COCO_DIR}'." "Will stop the application."
     )
 
     from src.main import app

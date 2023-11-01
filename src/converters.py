@@ -336,6 +336,7 @@ def convert_object_to_sly_geometry(lb_obj: dict, obj_cls: sly.ObjClass = None):
         local_path = os.path.join(g.TEMP_DIR, "mask.png")
         mask_np = download_mask(mask_url, local_path, g.STATE.client)
         geometry = sly.Bitmap(mask_np)
+        sly.fs.silent_remove(local_path)
     elif obj_cls.geometry_type == sly.Polygon and lb_obj.get("polygon"):
         exterior = [(point["y"], point["x"]) for point in lb_obj["polygon"]]
         geometry = sly.Polygon(exterior=exterior)
