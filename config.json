@@ -8,7 +8,7 @@
   "icon": "https://github.com/supervisely-ecosystem/labelbox-to-sly/assets/79905215/1787b160-acfe-4506-ac0a-bd51c33421d9",
   "icon_cover": true,
   "headless": false,
-  "poster": "https://github.com/supervisely-ecosystem/labelbox-to-sly/assets/79905215/1bc22278-7344-4a9a-ae79-20f15189e45c",
+  "poster": "https://github.com/supervisely-ecosystem/labelbox-to-sly/assets/79905215/440d0ca6-7f2a-4055-b9d1-bef69562f24c",
   "entrypoint": "python -m uvicorn src.main:app --host 0.0.0.0 --port 8000",
   "port": 8000,
   "context_menu": {

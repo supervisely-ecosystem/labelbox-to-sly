@@ -1,5 +1,5 @@
 <div align="center" markdown>
-<img src="https://github.com/supervisely-ecosystem/labelbox-to-sly/assets/79905215/1bc22278-7344-4a9a-ae79-20f15189e45c"/>
+<img src="https://github.com/supervisely-ecosystem/labelbox-to-sly/assets/79905215/440d0ca6-7f2a-4055-b9d1-bef69562f24c"/>
 
 # Convert and copy multiple Labelbox projects into Supervisely at once
 
