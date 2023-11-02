@@ -38,7 +38,7 @@ def download_coco_format_project(project: lb.Project) -> bool:
         project = g.STATE.client.get_project(project.uid)
         project_export = project.export_labels(download=True)
         if len(project_export) == 0:
-            sly.logger.error(f"Project {project.name} has no labels.")
+            sly.logger.warning(f"Project {project.name} has no labels.")
             return False
         sly.logger.debug(f"Project '{project.name}' has image labels.")
         labels = LBV1Converter.deserialize(project_export)
@@ -53,8 +53,7 @@ def download_coco_format_project(project: lb.Project) -> bool:
         )
         return project_src_dir
     except Exception as e:
-        sly.logger.error(f"Can't process the project {project.name}.")
-        sly.logger.error(e)
+        sly.logger.error(f"Can't process the project {project.name}: {e}")
         return False
 
 

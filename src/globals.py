@@ -134,7 +134,7 @@ class State:
             self.client = lb.Client(api_key=self.labelbox_api_key)
             sly.logger.debug("Connected to the Labelbox API.")
         except Exception as e:
-            sly.logger.error(f"Exception when calling Roboflow API: {e}")
+            sly.logger.error(f"Exception when calling Labelbox API: {e}")
             return None
         return self.client
 
