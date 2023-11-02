@@ -3,6 +3,7 @@ from supervisely.app.widgets import Button, Card, Container, Field, Input, Text
 
 import src.globals as g
 import src.ui.selection as selection
+import src.ui.copying as copying
 
 labelbox_api_address_input = Input(
     minlength=10,
@@ -91,12 +92,16 @@ def disconnected(with_error=False) -> None:
     card.uncollapse()
     selection.card.lock()
     selection.card.collapse()
+    copying.card.lock()
+    copying.card.collapse()
 
     change_connection_button.hide()
 
     if with_error:
         connection_status_text.status = "error"
-        connection_status_text.text = f"Failed to connect to {formatted_connection_settings()}."
+        connection_status_text.text = (
+            f"Failed to connect to {formatted_connection_settings()}. Please check the credentials."
+        )
 
     else:
         connection_status_text.status = "warning"
@@ -136,6 +141,22 @@ def change_connect_button_state(_: str) -> None:
 
 labelbox_api_address_input.value_changed(change_connect_button_state)
 labelbox_api_key_input.value_changed(change_connect_button_state)
+
+
+@change_connection_button.click
+def change_connection_settings() -> None:
+    """Changes the state of the widgets if the user wants to change the connection settings."""
+
+    sly.logger.debug("Changing connection settings...")
+
+    disconnected(with_error=False)
+
+    labelbox_api_address_input.enable()
+    labelbox_api_key_input.enable()
+    connect_button.enable()
+
+    change_connection_button.hide()
+    connection_status_text.hide()
 
 
 @connect_button.click

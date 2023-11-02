@@ -6,6 +6,7 @@ from supervisely.app.widgets import Button, Card, Container, Transfer
 import src.globals as g
 import src.ui.copying as copying
 from src.labelbox_api import get_projects
+from src.exceptions import handle_lb_exceptions
 
 projects_transfer = Transfer(
     filterable=True,
@@ -29,6 +30,7 @@ card.lock()
 card.collapse()
 
 
+@handle_lb_exceptions
 def fill_transfer_with_projects() -> None:
     """Fills the transfer widget with projects sorted by id from Labelbox API.
     On every launch clears the items in the widget and fills it with new projects."""
@@ -39,7 +41,6 @@ def fill_transfer_with_projects() -> None:
     for project in get_projects():
         g.STATE.projects[project.uid] = project
         transfer_items.append(Transfer.Item(key=project.uid, label=project.name))
-
     sly.logger.debug(f"Prepared {len(transfer_items)} items for transfer.")
 
     transfer_items.sort(key=lambda item: item.key)

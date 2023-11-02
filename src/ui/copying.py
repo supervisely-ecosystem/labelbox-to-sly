@@ -139,14 +139,22 @@ def start_copying() -> None:
             upload_status = False
             if project.media_type == lb.MediaType.Video:
                 sly.logger.debug(f"Project '{project.name}' has video labels.")
-                sly_project = process_video_project(project)
+                try:
+                    sly_project = process_video_project(project)
+                except Exception as e:
+                    sly.logger.error(f"Can't process the project '{project.name}'. {e}")
+                    sly_project = False
                 if sly_project:
                     set_project_url(project, sly_project.id)
                     upload_status = True
                 else:
                     upload_status = False
             elif project.media_type == lb.MediaType.Image:
-                project_src_dir = download_coco_format_project(project)
+                try:
+                    project_src_dir = download_coco_format_project(project)
+                except Exception as e:
+                    sly.logger.error(f"Can't process the project {project.name}: {e}")
+                    project_src_dir = False
                 if not project_src_dir:
                     sly.logger.warning(f"Project {project.name} was not downloaded.")
                     update_cells(project.uid, new_status=g.COPYING_STATUS.error)
@@ -179,7 +187,7 @@ def start_copying() -> None:
         good_results.text = f"Succesfully uploaded {succesfully_uploaded} projects."
         good_results.show()
     if uploaded_with_errors:
-        bad_results.text = f"Uploaded {uploaded_with_errors} projects with errors."
+        bad_results.text = f"Erorrs occured while processing {uploaded_with_errors} projects."
         bad_results.show()
 
     copy_button.text = "Copy"

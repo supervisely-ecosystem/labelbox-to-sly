@@ -43,9 +43,7 @@ SLY_DIR = os.path.join(TEMP_DIR, "sly")
 
 sly.fs.mkdir(COCO_DIR, remove_content_if_exists=True)
 sly.fs.mkdir(SLY_DIR, remove_content_if_exists=True)
-sly.logger.debug(
-    f"TEMP_DIR: {TEMP_DIR}, COCO_DIR: {COCO_DIR}, SLY_DIR: {SLY_DIR}"
-)
+sly.logger.debug(f"TEMP_DIR: {TEMP_DIR}, COCO_DIR: {COCO_DIR}, SLY_DIR: {SLY_DIR}")
 
 DEFAULT_API_ADDRESS = "https://app.labelbox.com/"
 
@@ -131,8 +129,13 @@ class State:
         """Connects to the Labelbox API."""
 
         try:
+            sly.logger.debug("Connecting to the Labelbox API...")
             self.client = lb.Client(api_key=self.labelbox_api_key)
+            self.client.get_user()
             sly.logger.debug("Connected to the Labelbox API.")
+        except lb.exceptions.ResourceNotFoundError as lbe:
+            sly.logger.warn(f"Invalid API KEY. Please check it in the settings of the app.")
+            return None
         except Exception as e:
             sly.logger.error(f"Exception when calling Labelbox API: {e}")
             return None
