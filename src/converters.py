@@ -13,6 +13,7 @@ from pycocotools.coco import COCO
 
 import src.globals as g
 from src.labelbox_api import download_mask
+from src.exceptions import handle_lb_exceptions
 
 
 def coco_to_supervisely(src_path: str, dst_path: str, ignore_bbox: bool = False) -> str:
@@ -350,6 +351,7 @@ def convert_object_to_sly_geometry(lb_obj: dict, obj_cls: sly.ObjClass = None):
     return geometry
 
 
+@handle_lb_exceptions
 def process_video_project(project: lb.Project):
     """Process video project. Get video links and annotations from Labelbox.
     Convert annotations to Supervisely format and upload to Supervisely project.
@@ -360,68 +362,63 @@ def process_video_project(project: lb.Project):
     :rtype: Union[sly.Project, bool]
     """
 
-    try:
-        sly_project = g.api.project.create(
-            g.STATE.selected_workspace,
-            project.name,
-            type=sly.ProjectType.VIDEOS,
-            change_name_if_conflict=True,
-        )
-        sly.logger.debug(f"Created project '{project.name}' in Supervisely.")
+    sly_project = g.api.project.create(
+        g.STATE.selected_workspace,
+        project.name,
+        type=sly.ProjectType.VIDEOS,
+        change_name_if_conflict=True,
+    )
+    sly.logger.debug(f"Created project '{project.name}' in Supervisely.")
 
-        sly_ds = g.api.dataset.create(sly_project.id, "ds0")
-        sly.logger.debug(f"Created dataset 'ds0' in project '{project.name}'.")
+    sly_ds = g.api.dataset.create(sly_project.id, "ds0")
+    sly.logger.debug(f"Created dataset 'ds0' in project '{project.name}'.")
 
-        sly_meta = create_sly_meta_from_lb(project, sly_project)
+    sly_meta = create_sly_meta_from_lb(project, sly_project)
 
-        project = g.STATE.client.get_project(project.uid)
-        project_export = project.export_labels(download=True)
-        if len(project_export) == 0:
-            sly.logger.warning(f"Project {project.name} has no labels.")
-            return False
-        sly.logger.debug(f"Project '{project.name}' has labels.")
-        data = LBV1VideoIterator(project_export, g.STATE.client)
-        for video_data in data:
-            video_url = video_data["Labeled Data"]
-            video_name = video_data["External ID"]
-            sly_video = g.api.video.upload_link(
-                sly_ds.id, video_url, video_name, skip_download=True
-            )
-            video_objects_map = {}
-            video_frames = []
-            labels_info = video_data["Label"]
-            for idx, frame_info in enumerate(labels_info):
-                figures = []
-                for lb_obj in frame_info["objects"]:
-                    cls_name = lb_obj["title"]
-                    vobj_id = lb_obj["featureId"]
-
-                    lbl_obj_cls = sly_meta.get_obj_class(cls_name)
-                    geometry = convert_object_to_sly_geometry(lb_obj, lbl_obj_cls)
-                    if geometry is None:
-                        continue
-                    vobj = video_objects_map.get(vobj_id)
-                    if vobj is None:
-                        vobj = sly.VideoObject(lbl_obj_cls, class_id=lbl_obj_cls.sly_id)
-                        video_objects_map[vobj_id] = vobj
-
-                    figure = sly.VideoFigure(vobj, geometry, idx, class_id=vobj_id)
-
-                    figures.append(figure)
-                sly_frame = sly.Frame(idx, figures=figures)
-                video_frames.append(sly_frame)
-            video_objects = sly.VideoObjectCollection(list(video_objects_map.values()))
-            video_frames = sly.FrameCollection(video_frames)
-            sly_video = g.api.video.get_info_by_id(sly_video.id)
-            img_size = (sly_video.frame_height, sly_video.frame_width)
-            video_ann = sly.VideoAnnotation(img_size, sly_video.frames_count, video_objects, video_frames)
-            g.api.video.annotation.append(sly_video.id, video_ann)
-        sly.logger.info(f"Project {project.name} was successfully uploaded to Supervisely.")
-        return sly_project
-    except Exception as e:
-        sly.logger.error(f"Can't process the project {project.name}. {e}")
-        g.api.project.remove(sly_project.id)
+    project = g.STATE.client.get_project(project.uid)
+    project_export = project.export_labels(download=True)
+    if len(project_export) == 0:
+        sly.logger.warning(f"Project {project.name} has no labels.")
         return False
+    sly.logger.debug(f"Project '{project.name}' has labels.")
+    data = LBV1VideoIterator(project_export, g.STATE.client)
+    for video_data in data:
+        video_url = video_data["Labeled Data"]
+        video_name = video_data["External ID"]
+        sly_video = g.api.video.upload_link(sly_ds.id, video_url, video_name, skip_download=True)
+        video_objects_map = {}
+        video_frames = []
+        labels_info = video_data["Label"]
+        for idx, frame_info in enumerate(labels_info):
+            figures = []
+            for lb_obj in frame_info["objects"]:
+                cls_name = lb_obj["title"]
+                vobj_id = lb_obj["featureId"]
+
+                lbl_obj_cls = sly_meta.get_obj_class(cls_name)
+                geometry = convert_object_to_sly_geometry(lb_obj, lbl_obj_cls)
+                if geometry is None:
+                    continue
+                vobj = video_objects_map.get(vobj_id)
+                if vobj is None:
+                    vobj = sly.VideoObject(lbl_obj_cls, class_id=lbl_obj_cls.sly_id)
+                    video_objects_map[vobj_id] = vobj
+
+                figure = sly.VideoFigure(vobj, geometry, idx, class_id=vobj_id)
+
+                figures.append(figure)
+            sly_frame = sly.Frame(idx, figures=figures)
+            video_frames.append(sly_frame)
+        video_objects = sly.VideoObjectCollection(list(video_objects_map.values()))
+        video_frames = sly.FrameCollection(video_frames)
+        sly_video = g.api.video.get_info_by_id(sly_video.id)
+        img_size = (sly_video.frame_height, sly_video.frame_width)
+        video_ann = sly.VideoAnnotation(
+            img_size, sly_video.frames_count, video_objects, video_frames
+        )
+        g.api.video.annotation.append(sly_video.id, video_ann)
+    sly.logger.info(f"Project {project.name} was successfully uploaded to Supervisely.")
+    return sly_project
 
 
 def create_sly_meta_from_lb(project: lb.Project, sly_project: sly.Project):
@@ -443,7 +440,9 @@ def create_sly_meta_from_lb(project: lb.Project, sly_project: sly.Project):
         obj_class = sly.ObjClass(tool.name, g.GEOMETRIES_MAPPING[tool.tool.name])
         obj_classes.append(obj_class)
 
-        sly.logger.debug(f"   - Added object class '{tool.name}' ({obj_class.geometry_type.geometry_name()}).")
+        sly.logger.debug(
+            f"   - Added object class '{tool.name}' ({obj_class.geometry_type.geometry_name()})."
+        )
 
     project_meta = sly.ProjectMeta(obj_classes=obj_classes)
     g.api.project.update_meta(sly_project.id, project_meta)

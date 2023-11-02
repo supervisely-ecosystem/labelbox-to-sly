@@ -10,13 +10,15 @@ from labelbox.data.serialization.labelbox_v1.converter import LBV1Converter
 from PIL import Image
 
 import src.globals as g
+from src.exceptions import handle_lb_exceptions
 
-
+@handle_lb_exceptions
 def get_projects() -> List[lb.Project]:
     projects = g.STATE.client.get_projects()
     return projects
 
 
+@handle_lb_exceptions
 def download_coco_format_project(project: lb.Project) -> bool:
     """Download project from labelbox and convert to COCO format
 
@@ -34,29 +36,26 @@ def download_coco_format_project(project: lb.Project) -> bool:
     sly.fs.mkdir(src_img_dir, remove_content_if_exists=True)
     sly.fs.mkdir(src_ann_dir, remove_content_if_exists=True)
 
-    try:
-        project = g.STATE.client.get_project(project.uid)
-        project_export = project.export_labels(download=True)
-        if len(project_export) == 0:
-            sly.logger.warning(f"Project {project.name} has no labels.")
-            return False
-        sly.logger.debug(f"Project '{project.name}' has image labels.")
-        labels = LBV1Converter.deserialize(project_export)
-        coco_labels = COCOConverter.serialize_instances(
-            labels, image_root=src_img_dir, ignore_existing_data=True, max_workers=0
-        )
-        image_path = coco_labels.get("info").get("image_root")
-        coco_labels["info"]["image_root"] = image_path.as_posix()
-        sly.json.dump_json_file(coco_labels, os.path.join(src_ann_dir, "instances.json"))
-        sly.logger.info(
-            f"Project {project.name} was downloaded successfully and converted to COCO format."
-        )
-        return project_src_dir
-    except Exception as e:
-        sly.logger.error(f"Can't process the project {project.name}: {e}")
+    project = g.STATE.client.get_project(project.uid)
+    project_export = project.export_labels(download=True)
+    if len(project_export) == 0:
+        sly.logger.warning(f"Project {project.name} has no labels.")
         return False
+    sly.logger.debug(f"Project '{project.name}' has image labels.")
+    labels = LBV1Converter.deserialize(project_export)
+    coco_labels = COCOConverter.serialize_instances(
+        labels, image_root=src_img_dir, ignore_existing_data=True, max_workers=0
+    )
+    image_path = coco_labels.get("info").get("image_root")
+    coco_labels["info"]["image_root"] = image_path.as_posix()
+    sly.json.dump_json_file(coco_labels, os.path.join(src_ann_dir, "instances.json"))
+    sly.logger.info(
+        f"Project {project.name} was downloaded successfully and converted to COCO format."
+    )
+    return project_src_dir
 
 
+@handle_lb_exceptions
 def download_mask(url: str, save_path: str, client):
     """Download mask from url and return as numpy array
 
