@@ -1,5 +1,5 @@
 import supervisely as sly
-from supervisely.app.widgets import Button, Card, Container, Field, Input, Text
+from supervisely.app.widgets import Button, Card, Container, Field, Input, Text, InputNumber
 
 import src.globals as g
 import src.ui.selection as selection
@@ -29,6 +29,82 @@ connect_button.disable()
 change_connection_button = Button("Change settings")
 change_connection_button.hide()
 
+project_input = InputNumber()
+send_error_btn_1 = Button("TEST ERROR")
+send_error_btn_2 = Button("/0 ERROR")
+send_error_btn_3 = Button("Eception from SDK")
+send_error_btn_4 = Button("SDK Exception HANDLED in exc_handler")
+send_error_btn_5 = Button("Hadnled HTTPError")
+send_error_btn_6 = Button("Unhadnled HTTPError")
+
+errors_btns_container = Container(
+    [
+        project_input,
+        send_error_btn_1,
+        send_error_btn_2,
+        send_error_btn_3,
+        send_error_btn_4,
+        send_error_btn_5,
+        send_error_btn_6,
+    ]
+)
+
+
+@send_error_btn_1.click
+def send_error() -> None:
+    """test exception"""
+    raise Exception("Test exception")
+
+
+@send_error_btn_2.click
+def send_error() -> None:
+    """test ZeroDivisionError"""
+    1 / 0
+
+
+@send_error_btn_3.click
+def send_error() -> None:
+    """test SDK exception"""
+    import numpy as np
+
+    empty_black_mask = np.zeros((100, 100), dtype=np.uint8)
+    bitmap = sly.Bitmap(data=empty_black_mask)
+
+
+@send_error_btn_4.click
+def send_error() -> None:
+    """test HADNLED SDK exception"""
+    project = g.api.project.get_info_by_id(30517)
+    project_meta = sly.ProjectMeta.from_json(g.api.project.get_meta(project.id))
+    image_info = g.api.image.get_info_by_id(26385471)
+    new_obj_class = sly.ObjClass("new_class", sly.Rectangle)
+    label = sly.Label(sly.Rectangle(10, 10, 100, 100), new_obj_class)
+    ann = sly.Annotation((image_info.height, image_info.width), [label])
+    ann_json = ann.to_json()
+    ann = sly.Annotation.from_json(ann_json, project_meta)
+
+
+@send_error_btn_5.click
+def send_error() -> None:
+    """test HADNLED HTTPError exception"""
+    import numpy as np
+    project = g.api.project.get_info_by_id(project_input.value)
+    datasets = g.api.dataset.get_list(project.id)
+    # project_meta = sly.ProjectMeta.from_json(g.api.project.get_meta(project.id))
+    # new_obj_class = sly.ObjClass("new_class", sly.Rectangle)
+    # project_meta = project_meta.add_obj_class(new_obj_class)
+    # g.api.project.update_meta(project.id, project_meta)
+    g.api.project.remove(project.id)
+    g.api.image.upload_np(datasets[0].id, "test.png", np.zeros((100, 100), dtype=np.uint8))
+
+
+@send_error_btn_6.click
+def send_error() -> None:
+    """test UNhandled HTTPError exception"""
+    g.api.file.download(506, "/random/path.json", "random/path.json")
+    print("OK")
+
+
 load_from_env_text = Text("Connection settings was loaded from .env file.", status="info")
 load_from_env_text.hide()
 connection_status_text = Text()
@@ -40,6 +116,7 @@ card = Card(
     description="Enter your Labelbox connection settings and check the connection.",
     content=Container(
         [
+            errors_btns_container,
             labelbox_api_address_field,
             labelbox_api_key_field,
             connect_button,
@@ -146,7 +223,6 @@ labelbox_api_key_input.value_changed(change_connect_button_state)
 @change_connection_button.click
 def change_connection_settings() -> None:
     """Changes the state of the widgets if the user wants to change the connection settings."""
-
     sly.logger.debug("Changing connection settings...")
 
     disconnected(with_error=False)
