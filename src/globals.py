@@ -64,6 +64,7 @@ class State:
     def __init__(self):
         self.selected_team = sly.env.team_id()
         self.selected_workspace = sly.env.workspace_id()
+        self.task_id = sly.env.task_id()
 
         # Will be set to True, if the app will be launched from .env file in Supervisely.
         self.loaded_from_env = False
