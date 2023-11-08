@@ -17,4 +17,5 @@ app = sly.Application(layout=layout)
 @btn.click
 def set_task_output() -> None:
     """test exception"""
-    g.api.task.set_output_error(g.STATE.task_id, "Test exception")
+    g.api.task.set_output_error(g.STATE.task_id, "Test exceptions", show_logs=False)
+    app.stop()
