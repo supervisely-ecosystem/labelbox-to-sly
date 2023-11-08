@@ -5,10 +5,10 @@
   "description": "Convert and copy multiple Labelbox projects into Supervisely at once.",
   "docker_image": "supervisely/base-py-sdk:6.72.168",
   "categories": ["images", "import", "videos"],
-  "icon": "https://github.com/supervisely-ecosystem/labelbox-to-sly/assets/79905215/1787b160-acfe-4506-ac0a-bd51c33421d9",
+  "icon": "https://github.com/supervisely-ecosystem/labelbox-to-sly/assets/79905215/c9134dfe-ca3a-4f91-93d1-0354b7a0ff7e",
   "icon_cover": true,
   "headless": false,
-  "poster": "https://github.com/supervisely-ecosystem/labelbox-to-sly/assets/79905215/440d0ca6-7f2a-4055-b9d1-bef69562f24c",
+  "poster": "https://github.com/supervisely-ecosystem/labelbox-to-sly/assets/79905215/1ababed7-1960-43f4-91f0-c35ec68b34ad",
   "entrypoint": "python -m uvicorn src.main:app --host 0.0.0.0 --port 8000",
   "port": 8000,
   "context_menu": {
