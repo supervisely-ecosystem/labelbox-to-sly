@@ -31,7 +31,7 @@ if sly.is_development():
     else:
         sly.logger.warning("One of the .env files is missing. It may cause errors.")
 
-api: sly.Api = sly.Api.from_env()
+api = sly.Api.from_env()
 
 TEMP_DIR = os.path.join(PARENT_DIR, "temp")
 
