@@ -5,6 +5,7 @@ import src.globals as g
 import src.ui.selection as selection
 import src.ui.copying as copying
 
+err_btn = Button("Error")
 labelbox_api_address_input = Input(
     minlength=10,
     value="https://app.labelbox.com",
@@ -40,6 +41,7 @@ card = Card(
     description="Enter your Labelbox connection settings and check the connection.",
     content=Container(
         [
+            err_btn,
             labelbox_api_address_field,
             labelbox_api_key_field,
             connect_button,
@@ -51,6 +53,10 @@ card = Card(
     collapsable=True,
 )
 
+
+@err_btn.click
+def err_btn_click_handler() -> None:
+    raise Exception("Test exception")
 
 def connected() -> None:
     """Changes the state of the widgets if the app successfully connected to the Labelbox API.
