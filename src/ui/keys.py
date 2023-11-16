@@ -56,7 +56,10 @@ card = Card(
 
 @err_btn.click
 def err_btn_click_handler() -> None:
-    raise Exception("Test exception")
+    # raise Exception("Test exception")
+    file_info = g.api.file.get_info_by_path(g.STATE.selected_team, "123123").name
+    print(file_info)
+
 
 def connected() -> None:
     """Changes the state of the widgets if the app successfully connected to the Labelbox API.
