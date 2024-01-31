@@ -1,4 +1,5 @@
-supervisely==6.72.163
+#supervisely==6.72.163
+git+https://github.com/supervisely/supervisely.git@test-fastapi-incompability
 pycocotools==2.0.7
 typing-extensions==4.5.0
 labelbox[data]
