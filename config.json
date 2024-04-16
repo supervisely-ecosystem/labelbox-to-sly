@@ -4,7 +4,7 @@
   "name": "Labelbox to Supervisely Migration Tool",
   "description": "Convert and copy multiple Labelbox projects into Supervisely at once.",
   "docker_image": "supervisely/base-py-sdk:6.72.168",
-  "categories": ["images", "import", "videos"],
+  "categories": ["images", "import", "videos", "migration"],
   "icon": "https://github.com/supervisely-ecosystem/labelbox-to-sly/assets/79905215/c9134dfe-ca3a-4f91-93d1-0354b7a0ff7e",
   "icon_cover": true,
   "headless": false,
