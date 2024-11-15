@@ -8,6 +8,8 @@ from supervisely.app.widgets import Button, Card, Container, Flexbox, Progress, 
 import src.globals as g
 from src.converters import coco_to_supervisely, process_video_project
 from src.labelbox_api import download_coco_format_project
+import urllib.request
+
 
 COLUMNS = [
     "COPYING STATUS",

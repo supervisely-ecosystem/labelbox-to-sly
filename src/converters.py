@@ -10,12 +10,14 @@ import labelbox as lb
 import numpy as np
 import pycocotools.mask as mask_util
 import supervisely as sly
-from labelbox.data.serialization.labelbox_v1.converter import LBV1VideoIterator
+
+# from labelbox.data.serialization.labelbox_v1.converter import LBV1VideoIterator
 from pycocotools.coco import COCO
 
 import src.globals as g
 from src.labelbox_api import download_mask
 from src.exceptions import handle_lb_exceptions
+import urllib.request
 
 
 def coco_to_supervisely(src_path: str, dst_path: str, ignore_bbox: bool = False) -> str:
@@ -329,13 +331,16 @@ def convert_object_to_sly_geometry(lb_obj: dict, obj_cls: sly.ObjClass = None):
 
     if obj_cls is None:
         return None
-    elif obj_cls.geometry_type == sly.Rectangle and lb_obj.get("bbox"):
-        bbox = lb_obj["bbox"]
+    elif obj_cls.geometry_type == sly.Rectangle and lb_obj.get("bbox", lb_obj.get("bounding_box")):
+        bbox = lb_obj.get("bbox", lb_obj.get("bounding_box"))
         top, left = int(bbox["top"]), int(bbox["left"])
-        bottom, right = (int(top) + bbox["height"], int(left) + bbox["width"])
+        bottom, right = (int(top) + int(bbox["height"]), int(left) + int(bbox["width"]))
         geometry = sly.Rectangle(top, left, bottom, right)
-    elif obj_cls.geometry_type == sly.Bitmap and lb_obj.get("instanceURI"):
-        mask_url = lb_obj["instanceURI"]
+    elif obj_cls.geometry_type == sly.Bitmap and lb_obj.get("instanceURI", lb_obj.get("mask")):
+        mask = lb_obj.get("instanceURI", lb_obj.get("mask"))
+        if mask is None:
+            return
+        mask_url = mask.get("url")
         local_path = os.path.join(g.TEMP_DIR, "mask.png")
         mask_np = download_mask(mask_url, local_path, g.STATE.client)
         geometry = sly.Bitmap(mask_np)
@@ -376,52 +381,69 @@ def process_video_project(project: lb.Project, progress: sly.app.widgets.Progres
     sly.logger.debug(f"Created dataset 'ds0' in project '{project.name}'.")
 
     sly_meta = create_sly_meta_from_lb(project, sly_project)
-
     project = g.STATE.client.get_project(project.uid)
-    project_export = project.export_labels(download=True)
-    if len(project_export) == 0:
-        sly.logger.warning(f"Project {project.name} has no labels.")
-        return False
-    sly.logger.debug(f"Project '{project.name}' has labels.")
-    data = LBV1VideoIterator(project_export, g.STATE.client)
-    for video_data in data:
-        video_url = video_data["Labeled Data"]
-        video_name = video_data["External ID"]
-        # if sly.is_community():
+    params = {"interpolated_frames": True}
+    try:
+        export_task = project.export_v2(params=params)
+        export_task.wait_till_done()
+        if export_task.errors:
+            sly.logger.warning(
+                f"Error while exporting project {project.name}: {export_task.errors}"
+            )
+            return False
+    except Exception as e:
         try:
-            local_path = download_video(video_url, video_name, progress)
+            sly.logger.info("Trying to export project with experimental version of API")
+            export_task = project.export(params=params)
+            export_task.wait_till_done()
+            if export_task.errors:
+                sly.logger.warning(
+                    f"Error while exporting project {project.name}: {export_task.errors}"
+                )
+                return False
         except Exception as e:
-            sly.logger.error(f"Error while downloading remote video: {e}")
-            continue
-        sly_video = g.api.video.upload_path(sly_ds.id, video_name, local_path)
-        sly.fs.silent_remove(local_path)
-        # else:
-        #     sly_video = g.api.video.upload_link(
-        #         sly_ds.id, video_url, video_name, force_metadata_for_links=False
-        #     )
+            sly.logger.error(f"Error while exporting project {project.name}: {e}")
+            return False
+    for video_data in export_task.result:
+        video_url = video_data["data_row"]["row_data"]
+        video_name = video_data["data_row"]["external_id"]
+        if sly.is_community():
+            try:
+                local_path = download_video(video_url, video_name, progress)
+            except Exception as e:
+                sly.logger.error(f"Error while downloading remote video: {e}")
+                continue
+            sly_video = g.api.video.upload_path(sly_ds.id, video_name, local_path)
+            sly.fs.silent_remove(local_path)
+        else:
+            sly_video = g.api.video.upload_link(
+                sly_ds.id, video_url, video_name, force_metadata_for_links=False
+            )
         video_objects_map = {}
         video_frames = []
-        labels_info = video_data["Label"]
-        for idx, frame_info in enumerate(labels_info):
-            figures = []
-            for lb_obj in frame_info["objects"]:
-                cls_name = lb_obj["title"]
-                vobj_id = lb_obj["featureId"]
+        ann_infos = video_data["projects"][project.uid]["labels"]
+        for data in ann_infos:
+            if data["label_kind"] != "Video":
+                sly.logger.warning(f"Label kind '{data['label_kind']}' is not supported yet.")
+                continue
+            annotations = data["annotations"]
+            for idx, frame_info in annotations["frames"].items():
+                figures = []
+                for vobj_id, lb_obj in frame_info["objects"].items():
+                    cls_name = lb_obj["name"]
+                    lbl_obj_cls = sly_meta.get_obj_class(cls_name)
+                    vobj = video_objects_map.setdefault(
+                        vobj_id, sly.VideoObject(lbl_obj_cls, class_id=lbl_obj_cls.sly_id)
+                    )
 
-                lbl_obj_cls = sly_meta.get_obj_class(cls_name)
-                geometry = convert_object_to_sly_geometry(lb_obj, lbl_obj_cls)
-                if geometry is None:
-                    continue
-                vobj = video_objects_map.get(vobj_id)
-                if vobj is None:
-                    vobj = sly.VideoObject(lbl_obj_cls, class_id=lbl_obj_cls.sly_id)
-                    video_objects_map[vobj_id] = vobj
-
-                figure = sly.VideoFigure(vobj, geometry, idx, class_id=vobj_id)
-
-                figures.append(figure)
-            sly_frame = sly.Frame(idx, figures=figures)
-            video_frames.append(sly_frame)
+                    geometry = convert_object_to_sly_geometry(lb_obj, lbl_obj_cls)
+                    if geometry is None:
+                        continue
+                    figure = sly.VideoFigure(
+                        vobj, geometry, int(idx) - 1, class_id=lbl_obj_cls.sly_id
+                    )
+                    figures.append(figure)
+                video_frames.append(sly.Frame(int(idx) - 1, figures=figures))
         video_objects = sly.VideoObjectCollection(list(video_objects_map.values()))
         video_frames = sly.FrameCollection(video_frames)
         sly_video = g.api.video.get_info_by_id(sly_video.id)
