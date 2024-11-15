@@ -1,4 +1,5 @@
-supervisely==6.73.147
+supervisely==6.73.231
 pycocotools==2.0.7
-typing-extensions==4.5.0
+typing-extensions==4.8.0
 labelbox[data]
+protobuf<=3.20.3
