@@ -387,18 +387,18 @@ def process_video_project(project: lb.Project, progress: sly.app.widgets.Progres
     for video_data in data:
         video_url = video_data["Labeled Data"]
         video_name = video_data["External ID"]
-        if sly.is_community():
-            try:
-                local_path = download_video(video_url, video_name, progress)
-            except Exception as e:
-                sly.logger.error(f"Error while downloading remote video: {e}")
-                continue
-            sly_video = g.api.video.upload_path(sly_ds.id, video_name, local_path)
-            sly.fs.silent_remove(local_path)
-        else:
-            sly_video = g.api.video.upload_link(
-                sly_ds.id, video_url, video_name, force_metadata_for_links=False
-            )
+        # if sly.is_community():
+        try:
+            local_path = download_video(video_url, video_name, progress)
+        except Exception as e:
+            sly.logger.error(f"Error while downloading remote video: {e}")
+            continue
+        sly_video = g.api.video.upload_path(sly_ds.id, video_name, local_path)
+        sly.fs.silent_remove(local_path)
+        # else:
+        #     sly_video = g.api.video.upload_link(
+        #         sly_ds.id, video_url, video_name, force_metadata_for_links=False
+        #     )
         video_objects_map = {}
         video_frames = []
         labels_info = video_data["Label"]
