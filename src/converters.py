@@ -1,5 +1,7 @@
+import requests
 import os
 import shutil
+from uuid import uuid4
 from copy import deepcopy
 from typing import Dict, List, Tuple
 
@@ -352,7 +354,7 @@ def convert_object_to_sly_geometry(lb_obj: dict, obj_cls: sly.ObjClass = None):
 
 
 @handle_lb_exceptions
-def process_video_project(project: lb.Project):
+def process_video_project(project: lb.Project, progress: sly.app.widgets.Progress):
     """Process video project. Get video links and annotations from Labelbox.
     Convert annotations to Supervisely format and upload to Supervisely project.
 
@@ -385,7 +387,18 @@ def process_video_project(project: lb.Project):
     for video_data in data:
         video_url = video_data["Labeled Data"]
         video_name = video_data["External ID"]
-        sly_video = g.api.video.upload_link(sly_ds.id, video_url, video_name, skip_download=True)
+        if sly.is_community():
+            try:
+                local_path = download_video(video_url, video_name, progress)
+            except Exception as e:
+                sly.logger.error(f"Error while downloading remote video: {e}")
+                continue
+            sly_video = g.api.video.upload_path(sly_ds.id, video_name, local_path)
+            sly.fs.silent_remove(local_path)
+        else:
+            sly_video = g.api.video.upload_link(
+                sly_ds.id, video_url, video_name, force_metadata_for_links=False
+            )
         video_objects_map = {}
         video_frames = []
         labels_info = video_data["Label"]
@@ -447,3 +460,30 @@ def create_sly_meta_from_lb(project: lb.Project, sly_project: sly.Project):
     project_meta = sly.ProjectMeta(obj_classes=obj_classes)
     g.api.project.update_meta(sly_project.id, project_meta)
     return project_meta
+
+
+def download_video(video_url, video_name, progress):
+    """Download video from video_url and return local path to video.
+
+    :param video_url: URL to video.
+    :type video_url: str
+    :param video_name: Name of video.
+    :type video_name: str
+    :param progress: Progress bar.
+    :type progress: sly.app.widgets.Progress
+    :return: Local path to video.
+    :rtype: str
+    """
+    if sly.fs.get_file_ext(video_name) == "":
+        video_name += ".mp4"
+    local_path = os.path.join(g.TEMP_DIR, uuid4().hex, video_name)
+    sly.fs.ensure_base_path(local_path)
+    total_size_in_bytes = None
+    with requests.head(video_url) as r:
+        r.raise_for_status()
+        total_size_in_bytes = int(r.headers.get("Content-Length", "0"))
+    if total_size_in_bytes is None:
+        raise ValueError("Can't get remote video size.")
+    with progress(total=total_size_in_bytes, message=f"Downloading {video_name}") as pbar:
+        sly.fs.download(video_url, local_path, progress=pbar.update)
+    return local_path

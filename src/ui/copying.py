@@ -140,7 +140,7 @@ def start_copying() -> None:
             if project.media_type == lb.MediaType.Video:
                 sly.logger.debug(f"Project '{project.name}' has video labels.")
                 try:
-                    sly_project = process_video_project(project)
+                    sly_project = process_video_project(project, copying_progress)
                 except Exception as e:
                     sly.logger.error(f"Can't process the project '{project.name}'. {e}")
                     sly_project = False
