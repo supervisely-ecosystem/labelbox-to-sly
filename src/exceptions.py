@@ -1,17 +1,21 @@
-import labelbox as lb
 from src.ui.info import info_text
+
+try:
+    from labelbox.exceptions import ApiLimitError, AuthenticationError
+except ImportError:
+    from lbox.exceptions import AuthenticationError, ApiLimitError
 
 
 def handle_lb_exceptions(func):
     def wrapper(*args, **kwargs):
         try:
             return func(*args, **kwargs)
-        except lb.exceptions.AuthenticationError as e:
+        except AuthenticationError as e:
             info_text.text = "Invalid API KEY. Please check it in the settings of the app."
             info_text.status = "error"
             info_text.show()
             raise Exception(f"Invalid API KEY. Please check it in the settings of the app.")
-        except lb.exceptions.ApiLimitError as e:
+        except ApiLimitError as e:
             info_text.text = (
                 "Your API KEY for Labelbox has limitations. Please contact our support team."
             )

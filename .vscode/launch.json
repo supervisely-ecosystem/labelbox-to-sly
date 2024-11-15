@@ -13,11 +13,10 @@
         "--port",
         "8000",
         "--ws",
-        "websockets",
-        "--reload"
+        "websockets"
       ],
       "jinja": true,
-      "justMyCode": true,
+      "justMyCode": false,
       "env": {
         "PYTHONPATH": "${workspaceFolder}:${PYTHONPATH}",
         "LOG_LEVEL": "DEBUG"
