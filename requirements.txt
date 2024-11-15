@@ -1,5 +1,3 @@
 pycocotools==2.0.7
-typing-extensions
-labelbox[data]==5.2.1
-pydantic
-shapely
+typing-extensions==4.5.0
+labelbox[data]
