@@ -7,7 +7,7 @@ from supervisely.app.widgets import Button, Card, Container, Flexbox, Progress, 
 
 import src.globals as g
 from src.converters import coco_to_supervisely, process_video_project
-from src.labelbox_api import download_coco_format_project
+from src.converters import process_image_project
 import urllib.request
 
 
@@ -153,20 +153,13 @@ def start_copying() -> None:
                     upload_status = False
             elif project.media_type == lb.MediaType.Image:
                 try:
-                    project_src_dir = download_coco_format_project(project)
+                    sly_project = process_image_project(project, copying_progress)
                 except Exception as e:
                     sly.logger.error(f"Can't process the project {project.name}: {e}")
-                    project_src_dir = False
-                if not project_src_dir:
-                    sly.logger.warning(f"Project {project.name} was not downloaded.")
-                    update_cells(project.uid, new_status=g.COPYING_STATUS.error)
-                    uploaded_with_errors += 1
-                    copy_pbar.update(1)
-                    continue
-                project_dst_dir = os.path.join(g.SLY_DIR, project.name)
-                sly.fs.mkdir(project_dst_dir, remove_content_if_exists=True)
-
-                upload_status = convert_and_upload(project_src_dir, project_dst_dir, project)
+                    sly_project = False
+                if sly_project:
+                    set_project_url(project, sly_project.id)
+                    upload_status = True
 
             if upload_status:
                 sly.logger.info(f"Project {project.name} was uploaded successfully.")

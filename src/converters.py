@@ -456,7 +456,89 @@ def process_video_project(project: lb.Project, progress: sly.app.widgets.Progres
     return sly_project
 
 
-def create_sly_meta_from_lb(project: lb.Project, sly_project: sly.Project):
+@handle_lb_exceptions
+def process_image_project(project: lb.Project, progress: sly.app.widgets.Progress):
+    """Download project from labelbox and convert to COCO format
+
+    :param project: labelbox project
+    :type project: lb.Project
+    :return: path to project directory or False if error
+    :rtype: Union[str, bool]
+    """
+
+    project_dir = os.path.join(g.SLY_DIR, project.name)
+    sly.fs.mkdir(project_dir, remove_content_if_exists=True)
+
+    sly_project = sly.Project(project_dir, sly.OpenMode.CREATE)
+    dataset = sly_project.create_dataset("ds0")
+
+    sly_meta = create_sly_meta_from_lb(project)
+    sly_project.set_meta(sly_meta)
+
+    project = g.STATE.client.get_project(project.uid)
+    try:
+        export_task = project.export_v2()
+        export_task.wait_till_done()
+        if export_task.errors:
+            sly.logger.warning(
+                f"Error while exporting project {project.name}: {export_task.errors}"
+            )
+            return False
+    except Exception as e:
+        try:
+            sly.logger.info("Trying to export project with experimental version of API")
+            export_task = project.export()
+            export_task.wait_till_done()
+            if export_task.errors:
+                sly.logger.warning(
+                    f"Error while exporting project {project.name}: {export_task.errors}"
+                )
+                return False
+        except Exception as e:
+            sly.logger.error(f"Error while exporting project {project.name}: {e}")
+
+    result = export_task.result
+    with progress(total=len(result), message="Downloading and converting data") as pbar:
+        for image_data in result:
+            image_url = image_data["data_row"]["row_data"]
+            image_name = image_data["data_row"]["external_id"]
+            height = image_data["media_attributes"]["height"]
+            width = image_data["media_attributes"]["width"]
+            image_size = (height, width)
+            try:
+                local_path = dataset.generate_item_path(image_name)
+                download_image(image_url, local_path, progress)
+                dataset.add_item_file(image_name, local_path)
+            except Exception as e:
+                sly.logger.error(f"Error while downloading remote image: {e}")
+                continue
+
+            ann_infos = image_data["projects"][project.uid]["labels"]
+            labels = []
+            for data in ann_infos:
+                annotations = data["annotations"]
+                for lb_obj in annotations["objects"]:
+                    cls_name = lb_obj["name"]
+                    lbl_obj_cls = sly_meta.get_obj_class(cls_name)
+                    geometry = convert_object_to_sly_geometry(lb_obj, lbl_obj_cls)
+                    if geometry is None:
+                        continue
+                    labels.append(sly.Label(geometry, lbl_obj_cls))
+            item_ann = sly.Annotation(image_size, labels=labels)
+            dataset.set_ann(image_name, item_ann)
+            pbar.update(1)
+
+        sly.logger.info(f"Project {project.name} was successfully uploaded to Supervisely.")
+
+    with progress(total=len(result), message="Uploading project") as pbar:
+        project_id, _ = sly.upload_project(
+            project_dir, g.api, g.STATE.selected_workspace, progress_cb=pbar.update
+        )
+    project_info = g.api.project.get_info_by_id(project_id)
+    return project_info
+
+
+def create_sly_meta_from_lb(project: lb.Project, sly_project: sly.Project = None):
     """Create and update Supervisely ProjectMeta from Labelbox project.
 
     :param project: Labelbox project.
@@ -480,7 +562,9 @@ def create_sly_meta_from_lb(project: lb.Project, sly_project: sly.Project):
         )
 
     project_meta = sly.ProjectMeta(obj_classes=obj_classes)
-    g.api.project.update_meta(sly_project.id, project_meta)
+
+    if sly_project is not None:
+        g.api.project.update_meta(sly_project.id, project_meta)
     return project_meta
 
 
@@ -508,4 +592,27 @@ def download_video(video_url, video_name, progress):
         raise ValueError("Can't get remote video size.")
     with progress(total=total_size_in_bytes, message=f"Downloading {video_name}") as pbar:
         sly.fs.download(video_url, local_path, progress=pbar.update)
+    return local_path
+
+
+def download_image(image_url, local_path, progress):
+    """Download image from image_url and return local path to image.
+
+    :param image_url: URL to image.
+    :type image_url: str
+    :param local_path: Name of image.
+    :type local_path: str
+    :param progress: Progress bar.
+    :type progress: sly.app.widgets.Progress
+    :return: Local path to image.
+    :rtype: str
+    """
+    sly.fs.ensure_base_path(local_path)
+    total_size_in_bytes = None
+    with requests.head(image_url) as r:
+        r.raise_for_status()
+        total_size_in_bytes = int(r.headers.get("Content-Length", "0"))
+    if total_size_in_bytes is None:
+        raise ValueError("Can't get remote image size.")
+    sly.fs.download(image_url, local_path)
     return local_path
